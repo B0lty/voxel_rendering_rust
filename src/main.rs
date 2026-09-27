@@ -43,20 +43,6 @@ fn main() {
             buffer[triangle[i].0] = triangle[i].1;
         }
 
-        let line2 = draw_line(199, 148, 199, 130, BLUE);
-        for i in 0..(line2.len()) {
-            buffer[line2[i].0] = line2[i].1;
-        }
-
-        let (index, col) = draw_pixel(150, 50, GREEN);
-        buffer[index] = col;
-
-        let (index, col) = draw_pixel(200, 150, GREEN);
-        buffer[index] = col;
-
-        let (index, col) = draw_pixel(50, 170, GREEN);
-        buffer[index] = col;
-
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
@@ -117,7 +103,8 @@ fn draw_rect(x1: usize, y1: usize, x2: usize, y2: usize, col: u32) -> Vec<(usize
     return v_out;
 }
 
-/// Draws a line between two points using a colour.
+/// Draws a line between two points using a colour. This\
+/// is an implementation of Bresenham's line algorithm.
 ///
 /// # Example usage:
 /// ```
@@ -136,23 +123,36 @@ fn draw_rect(x1: usize, y1: usize, x2: usize, y2: usize, col: u32) -> Vec<(usize
 /// - **usize**: pos in buffer
 /// - **u32**: colour
 fn draw_line(x1: usize, y1: usize, x2: usize, y2: usize, col: u32) -> Vec<(usize, u32)> {
-    let mut v_out: Vec<(usize, u32)> = vec![(0 as usize, 0); x1.abs_diff(x2) + 1];
+    let mut v_out: Vec<(usize, u32)> = Vec::new();
 
-    for x in 0..x1.abs_diff(x2) + 1 {
-        let mut y = (((y2 as f32 - y1 as f32) / (x2 as f32 - x1 as f32)) * x as f32).round() as i32;
+    let (x1, y1, x2, y2) = (x1 as i32, y1 as i32, x2 as i32, y2 as i32);
 
-        // println!("{:?}", (y + minimumi32(y1 as i32, y2 as i32)));
+    let dx = (x2 - x1).abs();
+    let dy = -(y2 - y1).abs();
+    let sx = if x1 < x2 { 1 } else { -1 };
+    let sy = if y1 < y2 { 1 } else { -1 };
+    let mut err = dx + dy;
 
-        if (y + minimumi32(y1 as i32, y2 as i32)) < 0 {
-            y = y + (y + minimumi32(y1 as i32, y2 as i32)).abs();
+    let (mut x, mut y) = (x1, y1);
+
+    loop {
+        v_out.push(draw_pixel(x as usize, y as usize, col));
+
+        if x == x2 && y == y2 {
+            break;
         }
 
-        v_out[x] = draw_pixel(
-            (x as i32 + minimumi32(x1 as i32, x2 as i32)) as usize,
-            (y + minimumi32(y1 as i32, y2 as i32)) as usize,
-            col,
-        )
+        let e2 = 2 * err;
+        if e2 >= dy {
+            err += dy;
+            x += sx;
+        }
+        if e2 <= dx {
+            err += dx;
+            y += sy;
+        }
     }
+
     return v_out;
 }
 
@@ -198,9 +198,13 @@ fn get_line_xy_pts(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<Vec<usize>
 /// ```
 /// const BLUE: u32 = 0x000000ff;
 ///
+/// let triangle = draw_triangle(150, 50, 200, 150, 50, 170, BLUE);
+/// for i in 0..(triangle.len()) {
+///     buffer[triangle[i].0] = triangle[i].1;
+/// }
 /// ```
 /// This would draw a triangle between points\
-/// ```20, 20``` and ```40, 40``` with the colour blue.
+/// ```20, 20```, ```40, 40``` and ```30, 30``` with the colour blue.
 ///
 /// # Returns:
 /// A vector of tuple of ```(usize, u32)```
@@ -219,6 +223,7 @@ fn draw_triangle(
 
     let x_min = minimumi32(minimumi32(x1 as i32, x2 as i32), x3 as i32);
     let x_max = maximumi32(maximumi32(x1 as i32, x2 as i32), x3 as i32);
+    let x_range = x_min.abs_diff(x_max);
 
     let line_12 = get_line_xy_pts(x1, y1, x2, y2);
     let line_23 = get_line_xy_pts(x2, y2, x3, y3);
@@ -230,19 +235,32 @@ fn draw_triangle(
     outline_pts.extend(line_23.iter().cloned());
     outline_pts.extend(line_31.iter().cloned());
 
-    for x in 0..x_max.abs_diff(x_min) {
+    for x in 0..x_range {
         let ext_pts = find_matching_x_from_2d_arr(outline_pts.clone(), x as usize + x_min as usize);
         if ext_pts.len() > 1 {
+            let mut y_min: usize = ext_pts[0][1];
+            let mut y_max: usize = ext_pts[0][1];
+            let mut y_min_index = 0;
+            let mut y_max_index = 0;
+
+            for i in 0..ext_pts.len() {
+                if ext_pts[i][1] < y_min {
+                    y_min_index = i;
+                    y_min = ext_pts[i][1];
+                };
+                if ext_pts[i][1] > y_max {
+                    y_max_index = i;
+                    y_max = ext_pts[i][1];
+                };
+            }
+
             let scan_line = draw_line(
-                ext_pts[0][0],
-                ext_pts[0][1],
-                ext_pts[1][0],
-                ext_pts[1][1],
+                ext_pts[y_min_index][0],
+                ext_pts[y_min_index][1],
+                ext_pts[y_max_index][0],
+                ext_pts[y_max_index][1],
                 col,
             );
-            println!("{:?}", ext_pts);
-            println!("##################");
-            // println!("{:?}", ext_pts);
             v_out.extend(scan_line.iter().cloned());
         }
     }
