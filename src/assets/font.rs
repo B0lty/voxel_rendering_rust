@@ -337,61 +337,89 @@ pub const FULL_STOP: [[i32; 7]; 9] = [
     [0, 0, 0, 0, 0, 0, 0],
 ];
 
+pub const EXCLAMATION_MARK: [[i32; 7]; 9] = [
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0],
+];
+
+pub const QUESTION_MARK: [[i32; 7]; 9] = [
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 1, 1, 0, 0],
+    [0, 0, 0, 1, 1, 0, 0],
+    [0, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0],
+];
+
 pub fn get_letter_glyph(c: char) -> [[i32; 7]; 9] {
-    if c == 'a' {
+    if c == 'a' || c == 'A' {
         return A;
-    } else if c == 'b' {
+    } else if c == 'b' || c == 'B' {
         return B;
-    } else if c == 'c' {
+    } else if c == 'c' || c == 'C' {
         return C;
-    } else if c == 'd' {
+    } else if c == 'd' || c == 'D' {
         return D;
-    } else if c == 'e' {
+    } else if c == 'e' || c == 'E' {
         return E;
-    } else if c == 'f' {
+    } else if c == 'f' || c == 'F' {
         return F;
-    } else if c == 'g' {
+    } else if c == 'g' || c == 'G' {
         return G;
-    } else if c == 'h' {
+    } else if c == 'h' || c == 'H' {
         return H;
-    } else if c == 'i' {
+    } else if c == 'i' || c == 'I' {
         return I;
-    } else if c == 'j' {
+    } else if c == 'j' || c == 'J' {
         return J;
-    } else if c == 'k' {
+    } else if c == 'k' || c == 'K' {
         return K;
-    } else if c == 'l' {
+    } else if c == 'l' || c == 'L' {
         return L;
-    } else if c == 'm' {
+    } else if c == 'm' || c == 'M' {
         return M;
-    } else if c == 'n' {
+    } else if c == 'n' || c == 'N' {
         return N;
-    } else if c == 'o' {
+    } else if c == 'o' || c == 'O' {
         return O;
-    } else if c == 'p' {
+    } else if c == 'p' || c == 'P' {
         return P;
-    } else if c == 'q' {
+    } else if c == 'q' || c == 'Q' {
         return Q;
-    } else if c == 'r' {
+    } else if c == 'r' || c == 'R' {
         return R;
-    } else if c == 's' {
+    } else if c == 's' || c == 'S' {
         return S;
-    } else if c == 't' {
+    } else if c == 't' || c == 'T' {
         return T;
-    } else if c == 'u' {
+    } else if c == 'u' || c == 'U' {
         return U;
-    } else if c == 'v' {
+    } else if c == 'v' || c == 'V' {
         return V;
-    } else if c == 'w' {
+    } else if c == 'w' || c == 'W' {
         return W;
-    } else if c == 'x' {
+    } else if c == 'x' || c == 'X' {
         return X;
-    } else if c == 'y' {
+    } else if c == 'y' || c == 'Y' {
         return Y;
-    } else if c == 'z' {
+    } else if c == 'z' || c == 'Z' {
         return Z;
     } else if c == '.' {
         return FULL_STOP;
+    } else if c == '!' {
+        return EXCLAMATION_MARK;
+    } else if c == '?' {
+        return QUESTION_MARK;
     } else {
         return SPACE;
     }
