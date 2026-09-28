@@ -1,5 +1,5 @@
 use minifb::{Key, Window, WindowOptions};
-use ndarray::arr2;
+use ndarray::{Array1, Array2, arr1, arr2};
 
 use crate::assets::dd_drawing;
 
@@ -28,6 +28,19 @@ fn main() {
     // Limit to max ~60 fps update rate
     window.set_target_fps(60);
 
+    // 3D cube
+    let mut test_cube = vec![
+        arr1(&[0.0, 0.0, 4.0, 1.0]),
+        arr1(&[0.0, 0.0, 8.0, 1.0]),
+        arr1(&[4.0, 0.0, 8.0, 1.0]),
+        arr1(&[4.0, 0.0, 4.0, 1.0]),
+        arr1(&[0.0, 4.0, 4.0, 1.0]),
+        arr1(&[0.0, 4.0, 8.0, 1.0]),
+        arr1(&[4.0, 4.0, 8.0, 1.0]),
+        arr1(&[4.0, 4.0, 4.0, 1.0]),
+    ];
+    // test_cube = translate_mat2d(test_cube, 0.0, 0.0, 0.0);
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         for i in buffer.iter_mut() {
             *i = 0; // Resets all pixels to black
@@ -51,34 +64,26 @@ fn main() {
         // Focal length in pixels
         let focal: f32 = 50.0;
 
-        // 3D cube
-        let mut test_cube = arr2(&[
-            [0.0, 0.0, 4.0],
-            [0.0, 0.0, 8.0],
-            [4.0, 0.0, 8.0],
-            [4.0, 0.0, 4.0],
-            [0.0, 4.0, 4.0],
-            [0.0, 4.0, 8.0],
-            [4.0, 4.0, 8.0],
-            [4.0, 4.0, 4.0],
-        ]);
+        // Getting the offset between the cube's center and 0,0,0
+        let cube_offset = get_center_of_cube(test_cube.clone());
 
-        let angle: f32 = 3.1415 / 10.0;
-        let rotation_matrix = arr2(&[
-            [1.0, 0.0, 0.0],
-            [0.0, angle.cos(), -1.0 * angle.sin()],
-            [0.0, angle.sin(), angle.cos()],
-        ]);
+        // Moving cube's center to be 0,0,0
+        test_cube = translate_mat2d(test_cube, -cube_offset[0], -cube_offset[1], -cube_offset[2]);
 
-        test_cube = test_cube.dot(&rotation_matrix);
+        // Rotating cube
+        test_cube = rotate_mat2d(test_cube, 0.0, 0.0, 3.1415 / 100.0);
 
-        for i in 0..test_cube.dim().0 {
+        // Moving the cube's center away from 0,0,0
+        test_cube = translate_mat2d(test_cube, cube_offset[0], cube_offset[1], cube_offset[2]);
+
+        // Drawing the points of the cube
+        for i in 0..test_cube.len() {
             // Only project points in front of the camera.
-            if test_cube[(i, 2)] > 0.001 {
-                let inv_z = focal / test_cube[(i, 2)]; // perspective divide
+            if test_cube[i][2] > 0.001 {
+                let inv_z = focal / test_cube[i][2]; // perspective divide
 
-                let x_screen = WIDTH as f32 / 2.0 + test_cube[(i, 0)] * inv_z; // flip x
-                let y_screen = HEIGHT as f32 / 2.0 - test_cube[(i, 1)] * inv_z; // flip y
+                let x_screen = WIDTH as f32 / 2.0 + test_cube[i][0] * inv_z; // flip x
+                let y_screen = HEIGHT as f32 / 2.0 - test_cube[i][1] * inv_z; // flip y
 
                 // Bounds check before converting to an index.
                 if (0.0..WIDTH as f32).contains(&x_screen)
@@ -94,4 +99,72 @@ fn main() {
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
+}
+
+/// Rotate a 2D matix using ```yaw```, ```pitch``` and ```roll```.
+fn rotate_mat2d(mat: Vec<Array1<f32>>, yaw: f32, pitch: f32, roll: f32) -> Vec<Array1<f32>> {
+    let mut mat_out: Vec<Array1<f32>> = vec![];
+    let rotation_mat = arr2(&[
+        [
+            yaw.cos() * pitch.cos(),
+            yaw.cos() * pitch.sin() * roll.sin() - yaw.sin() * roll.cos(),
+            yaw.cos() * pitch.sin() * roll.sin() + yaw.sin() * roll.cos(),
+            0.0,
+        ],
+        [
+            yaw.sin() * pitch.cos(),
+            yaw.sin() * pitch.sin() * roll.sin() + yaw.cos() * roll.cos(),
+            yaw.sin() * pitch.sin() * roll.cos() - yaw.cos() * roll.sin(),
+            0.0,
+        ],
+        [
+            -pitch.sin(),
+            pitch.cos() * roll.sin(),
+            pitch.cos() * roll.cos(),
+            0.0,
+        ],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+
+    for i in 0..mat.len() {
+        mat_out.push(mat[i].dot(&rotation_mat));
+    }
+
+    return mat_out;
+}
+
+/// Translate a 2D matix using ```tx```, ```ty``` and ```tz```.
+fn translate_mat2d(mat: Vec<Array1<f32>>, tx: f32, ty: f32, tz: f32) -> Vec<Array1<f32>> {
+    let mut mat_out: Vec<Array1<f32>> = vec![];
+
+    for i in 0..mat.len() {
+        mat_out.push(arr1(&[
+            mat[i][0] + tx,
+            mat[i][1] + ty,
+            mat[i][2] + tz,
+            mat[i][3],
+        ]));
+    }
+
+    return mat_out;
+}
+
+/// Returns a vector with the ```x```, ```y``` and ```z``` offset the cube has from ```0,0,0```.
+fn get_center_of_cube(mat: Vec<Array1<f32>>) -> Vec<f32> {
+    let mut x_sum = 0.0;
+    let mut y_sum = 0.0;
+    let mut z_sum = 0.0;
+    let n_pts = mat.len();
+
+    for i in 0..n_pts {
+        x_sum += mat[i][0];
+        y_sum += mat[i][1];
+        z_sum += mat[i][2];
+    }
+
+    return vec![
+        x_sum / n_pts as f32,
+        y_sum / n_pts as f32,
+        z_sum / n_pts as f32,
+    ];
 }
