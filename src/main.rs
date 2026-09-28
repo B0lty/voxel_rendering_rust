@@ -1,10 +1,13 @@
 use minifb::{Key, Window, WindowOptions};
 use ndarray::{Array1, arr1, arr2};
 
+pub mod assets;
+
+use crate::assets::buttons;
 use crate::assets::dd_drawing;
 use crate::assets::matrix;
 
-pub mod assets;
+use crate::assets::buttons::Button;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -40,7 +43,16 @@ fn main() {
         arr1(&[4.0, 4.0, 8.0, 1.0]),
         arr1(&[4.0, 4.0, 4.0, 1.0]),
     ];
-    // test_cube = translate_mat2d(test_cube, 0.0, 0.0, 0.0);
+
+    // Declaring buttons
+    let buttons: Vec<Button> = vec![Button {
+        x_pos: 10.0,
+        y_pos: 10.0,
+        text: String::from("hello world."),
+        border_width: 3.0,
+        text_colour: 0x00888888,
+        bg_colour: 0x00222244,
+    }];
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         for i in buffer.iter_mut() {
@@ -102,6 +114,16 @@ fn main() {
                 for i in 0..(line.len()) {
                     buffer[line[i].0] = line[i].1;
                 }
+            }
+        }
+
+        // rendering buttons
+        // vec1.extend(vec2.iter().cloned())
+        let button_buff = buttons::render_buttons(&buttons);
+
+        for i in 0..button_buff.len() {
+            if button_buff[i] != 1 {
+                buffer[i] = button_buff[i];
             }
         }
 
