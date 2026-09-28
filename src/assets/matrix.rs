@@ -1,16 +1,25 @@
+use crate::assets::ddd_general::{Vertex, vertex};
 use ndarray::{Array1, arr1, arr2};
 
+fn vertex_to_matrix(vertex: Vertex) -> Array1<f32> {
+    return arr1(&[vertex.x, vertex.y, vertex.z, vertex.is_pt]);
+}
+
+fn matrix_to_vertex(mat: Array1<f32>) -> Vertex {
+    return Vertex {
+        x: mat[0],
+        y: mat[1],
+        z: mat[2],
+        is_pt: mat[3],
+    };
+}
+
 /// Translate a 2D matix using ```tx```, ```ty``` and ```tz```.
-pub fn translate_mat2d(mat: Vec<Array1<f32>>, tx: f32, ty: f32, tz: f32) -> Vec<Array1<f32>> {
-    let mut mat_out: Vec<Array1<f32>> = vec![];
+pub fn translate_mat2d(mat: Vec<Vertex>, tx: f32, ty: f32, tz: f32) -> Vec<Vertex> {
+    let mut mat_out: Vec<Vertex> = vec![];
 
     for i in 0..mat.len() {
-        mat_out.push(arr1(&[
-            mat[i][0] + tx,
-            mat[i][1] + ty,
-            mat[i][2] + tz,
-            mat[i][3],
-        ]));
+        mat_out.push(vertex(mat[i].x + tx, mat[i].y + ty, mat[i].z + tz));
     }
 
     return mat_out;
@@ -20,8 +29,8 @@ pub fn translate_mat2d(mat: Vec<Array1<f32>>, tx: f32, ty: f32, tz: f32) -> Vec<
 ///
 /// # Warning
 /// This rotates around ```0,0,0```
-fn rotate_mat2d(mat: Vec<Array1<f32>>, yaw: f32, pitch: f32, roll: f32) -> Vec<Array1<f32>> {
-    let mut mat_out: Vec<Array1<f32>> = vec![];
+fn rotate_mat2d(mat: Vec<Vertex>, yaw: f32, pitch: f32, roll: f32) -> Vec<Vertex> {
+    let mut mat_out: Vec<Vertex> = vec![];
     let rotation_mat = arr2(&[
         [
             yaw.cos() * pitch.cos(),
@@ -45,23 +54,25 @@ fn rotate_mat2d(mat: Vec<Array1<f32>>, yaw: f32, pitch: f32, roll: f32) -> Vec<A
     ]);
 
     for i in 0..mat.len() {
-        mat_out.push(mat[i].dot(&rotation_mat));
+        mat_out.push(matrix_to_vertex(
+            vertex_to_matrix(mat[i]).dot(&rotation_mat),
+        ));
     }
 
     return mat_out;
 }
 
 /// Returns a vector with the ```x```, ```y``` and ```z``` offset the cube has from ```0,0,0```.
-fn get_center_of_obj(mat: Vec<Array1<f32>>) -> Vec<f32> {
+fn get_center_of_obj(mat: Vec<Vertex>) -> Vec<f32> {
     let mut x_sum = 0.0;
     let mut y_sum = 0.0;
     let mut z_sum = 0.0;
     let n_pts = mat.len();
 
     for i in 0..n_pts {
-        x_sum += mat[i][0];
-        y_sum += mat[i][1];
-        z_sum += mat[i][2];
+        x_sum += mat[i].x;
+        y_sum += mat[i].y;
+        z_sum += mat[i].z;
     }
 
     return vec![
@@ -77,15 +88,15 @@ fn get_center_of_obj(mat: Vec<Array1<f32>>) -> Vec<f32> {
 /// ```x```, ```y```, ```z``` offset: An offset from\
 /// the center of the object, as f32
 pub fn rotate_obj(
-    obj: Vec<Array1<f32>>,
+    obj: Vec<Vertex>,
     yaw: f32,
     pitch: f32,
     roll: f32,
     x_offset: f32,
     y_offset: f32,
     z_offset: f32,
-) -> Vec<Array1<f32>> {
-    let mut mat_out: Vec<Array1<f32>> = vec![];
+) -> Vec<Vertex> {
+    let mut mat_out: Vec<Vertex> = vec![];
     // Getting the offset between the cube's center and 0,0,0
     let cube_offset = get_center_of_obj(obj.clone());
 
