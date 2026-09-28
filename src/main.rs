@@ -1,5 +1,5 @@
 use minifb::{Key, Window, WindowOptions};
-use ndarray::{Array1, Array2, arr1, arr2};
+use ndarray::{Array1, arr1, arr2};
 
 use crate::assets::dd_drawing;
 
@@ -46,52 +46,60 @@ fn main() {
             *i = 0; // Resets all pixels to black
         }
 
-        // let rect = dd_drawing::draw_rect(20, 40, 40, 20, BLUE);
-        // for i in 0..rect.len() {
-        //     buffer[rect[i].0] = rect[i].1;
-        // }
-
-        // let line = dd_drawing::draw_line(40, 40, 10, 20, GREEN);
-        // for i in 0..(line.len()) {
-        //     buffer[line[i].0] = line[i].1;
-        // }
-
-        // let triangle = dd_drawing::draw_triangle(150, 50, 200, 150, 50, 170, RED);
-        // for i in 0..(triangle.len()) {
-        //     buffer[triangle[i].0] = triangle[i].1;
-        // }
-
         // Focal length in pixels
         let focal: f32 = 50.0;
 
-        // Getting the offset between the cube's center and 0,0,0
-        let cube_offset = get_center_of_cube(test_cube.clone());
+        test_cube = rotate_obj(
+            test_cube,
+            3.1415 / 150.0,
+            3.1415 / 150.0,
+            3.1415 / 150.0,
+            0.0,
+            0.0,
+            0.0,
+        );
 
-        // Moving cube's center to be 0,0,0
-        test_cube = translate_mat2d(test_cube, -cube_offset[0], -cube_offset[1], -cube_offset[2]);
-
-        // Rotating cube
-        test_cube = rotate_mat2d(test_cube, 0.0, 0.0, 3.1415 / 100.0);
-
-        // Moving the cube's center away from 0,0,0
-        test_cube = translate_mat2d(test_cube, cube_offset[0], cube_offset[1], cube_offset[2]);
-
-        // Drawing the points of the cube
+        // Drawing the cube
         for i in 0..test_cube.len() {
             // Only project points in front of the camera.
             if test_cube[i][2] > 0.001 {
-                let inv_z = focal / test_cube[i][2]; // perspective divide
-
-                let x_screen = WIDTH as f32 / 2.0 + test_cube[i][0] * inv_z; // flip x
-                let y_screen = HEIGHT as f32 / 2.0 - test_cube[i][1] * inv_z; // flip y
+                // Drawing verticies of cube
+                let proj_coords =
+                    project_to_2d(test_cube[i][0], test_cube[i][1], test_cube[i][2], focal);
 
                 // Bounds check before converting to an index.
-                if (0.0..WIDTH as f32).contains(&x_screen)
-                    && (0.0..HEIGHT as f32).contains(&y_screen)
+                if (0.0..WIDTH as f32).contains(&proj_coords[0])
+                    && (0.0..HEIGHT as f32).contains(&proj_coords[1])
                 {
-                    let (index, col) =
-                        dd_drawing::draw_pixel(x_screen as usize, y_screen as usize, RED);
+                    let (index, col) = dd_drawing::draw_pixel(
+                        proj_coords[0] as usize,
+                        proj_coords[1] as usize,
+                        RED,
+                    );
                     buffer[index] = col;
+                }
+            }
+
+            // Drawing edges of the cube
+            if i < test_cube.len() - 1 {
+                let proj_pt1 =
+                    project_to_2d(test_cube[i][0], test_cube[i][1], test_cube[i][2], focal);
+                let proj_pt2 = project_to_2d(
+                    test_cube[i + 1][0],
+                    test_cube[i + 1][1],
+                    test_cube[i + 1][2],
+                    focal,
+                );
+
+                let line = dd_drawing::draw_line(
+                    proj_pt1[0] as usize,
+                    proj_pt1[1] as usize,
+                    proj_pt2[0] as usize,
+                    proj_pt2[1] as usize,
+                    GREEN,
+                );
+                for i in 0..(line.len()) {
+                    buffer[line[i].0] = line[i].1;
                 }
             }
         }
@@ -102,6 +110,9 @@ fn main() {
 }
 
 /// Rotate a 2D matix using ```yaw```, ```pitch``` and ```roll```.
+///
+/// # Warning
+/// This rotates around ```0,0,0```
 fn rotate_mat2d(mat: Vec<Array1<f32>>, yaw: f32, pitch: f32, roll: f32) -> Vec<Array1<f32>> {
     let mut mat_out: Vec<Array1<f32>> = vec![];
     let rotation_mat = arr2(&[
@@ -129,6 +140,46 @@ fn rotate_mat2d(mat: Vec<Array1<f32>>, yaw: f32, pitch: f32, roll: f32) -> Vec<A
     for i in 0..mat.len() {
         mat_out.push(mat[i].dot(&rotation_mat));
     }
+
+    return mat_out;
+}
+
+/// Rotate a 3D object.\
+/// ```obj```: A vector of 1D arrays of f32\
+/// ```yaw```, ```pitch```, ```roll```: In radians\
+/// ```x```, ```y```, ```z``` offset: An offset from\
+/// the center of the object, as f32
+fn rotate_obj(
+    obj: Vec<Array1<f32>>,
+    yaw: f32,
+    pitch: f32,
+    roll: f32,
+    x_offset: f32,
+    y_offset: f32,
+    z_offset: f32,
+) -> Vec<Array1<f32>> {
+    let mut mat_out: Vec<Array1<f32>> = vec![];
+    // Getting the offset between the cube's center and 0,0,0
+    let cube_offset = get_center_of_cube(obj.clone());
+
+    // Moving cube's center to be 0,0,0
+    let mat_c = translate_mat2d(
+        obj,
+        -cube_offset[0] + x_offset,
+        -cube_offset[1] + y_offset,
+        -cube_offset[2] + z_offset,
+    );
+
+    // Rotating cube
+    mat_out = rotate_mat2d(mat_c, yaw, pitch, roll);
+
+    // Moving the cube's center away from 0,0,0
+    mat_out = translate_mat2d(
+        mat_out,
+        cube_offset[0] - x_offset,
+        cube_offset[1] - y_offset,
+        cube_offset[2] - z_offset,
+    );
 
     return mat_out;
 }
@@ -167,4 +218,14 @@ fn get_center_of_cube(mat: Vec<Array1<f32>>) -> Vec<f32> {
         y_sum / n_pts as f32,
         z_sum / n_pts as f32,
     ];
+}
+
+/// Projects a 3D point onto a 2D plane, with a focal distance.
+fn project_to_2d(x: f32, y: f32, z: f32, focal: f32) -> Vec<f32> {
+    let inv_z = focal / z; // perspective divide
+
+    let x_screen = WIDTH as f32 / 2.0 + x * inv_z; // flip x
+    let y_screen = HEIGHT as f32 / 2.0 - y * inv_z; // flip y
+
+    return vec![x_screen, y_screen];
 }
