@@ -1,8 +1,4 @@
-use std::array;
-
 use minifb::{Key, MouseButton, Window, WindowOptions};
-use ndarray::Array1;
-use ndarray::arr1;
 
 pub mod assets;
 
@@ -10,8 +6,8 @@ use crate::assets::buttons;
 use crate::assets::dd_drawing;
 use crate::assets::ddd_general;
 use crate::assets::ddd_general::Rectangle3D;
-use crate::assets::matrix;
 
+use crate::assets::ddd_general::get_obj_edges;
 use crate::buttons::Action::Exit;
 use crate::ddd_general::rectangle_3d;
 
@@ -84,8 +80,8 @@ fn main() {
         // Focal length in pixels
         let focal: f32 = 50.0;
 
-        test_cube.vertex_data = matrix::rotate_obj(
-            test_cube.vertex_data,
+        test_cube.obj = ddd_general::rotate_obj(
+            &test_cube.obj,
             3.1415 / 150.0,
             3.1415 / 150.0,
             3.1415 / 150.0,
@@ -95,14 +91,14 @@ fn main() {
         );
 
         // Drawing the cube
-        for i in 0..test_cube.vertex_data.len() {
+        for i in 0..test_cube.obj.vertex_data.len() {
             // Only project points in front of the camera.
-            if test_cube.vertex_data[i].z > 0.001 {
+            if test_cube.obj.vertex_data[i].z > 0.001 {
                 // Drawing verticies of cube
                 let proj_coords = project_to_2d(
-                    test_cube.vertex_data[i].x,
-                    test_cube.vertex_data[i].y,
-                    test_cube.vertex_data[i].z,
+                    test_cube.obj.vertex_data[i].x,
+                    test_cube.obj.vertex_data[i].y,
+                    test_cube.obj.vertex_data[i].z,
                     focal,
                 );
 
@@ -120,19 +116,10 @@ fn main() {
             }
 
             // Drawing edges of the cube
-            if i < test_cube.vertex_data.len() - 1 {
-                let proj_pt1 = project_to_2d(
-                    test_cube.vertex_data[i].x,
-                    test_cube.vertex_data[i].y,
-                    test_cube.vertex_data[i].z,
-                    focal,
-                );
-                let proj_pt2 = project_to_2d(
-                    test_cube.vertex_data[i + 1].x,
-                    test_cube.vertex_data[i + 1].y,
-                    test_cube.vertex_data[i + 1].z,
-                    focal,
-                );
+            let obj_edges = get_obj_edges(&test_cube.obj);
+            for edge in obj_edges {
+                let proj_pt1 = project_to_2d(edge[0].x, edge[0].y, edge[0].z, focal);
+                let proj_pt2 = project_to_2d(edge[1].x, edge[1].y, edge[1].z, focal);
 
                 let line = dd_drawing::draw_line(
                     proj_pt1[0] as usize,
@@ -150,7 +137,6 @@ fn main() {
         }
 
         // rendering buttons
-        // vec1.extend(vec2.iter().cloned())
         let button_buff = buttons::render_buttons(&buttons);
 
         for i in 0..button_buff.len() {

@@ -20,38 +20,41 @@ pub fn draw_pixel(x: usize, y: usize, col: u32) -> (usize, u32) {
     return (x + y * WIDTH, col);
 }
 
-/// Draws a rectangle between two points using a colour.
+/// Draws a rectangle between four points using a colour.
 ///
 /// # Example usage:
 /// ```
 /// const BLUE: u32 = 0x000000ff;
 ///
-/// let rect = draw_rect(20, 20, 40, 40, BLUE);
+/// let rect = draw_rect(20, 20, 20, 40, 40, 40, 40, 20, BLUE);
 /// for i in 0..rect.len() {
 ///     buffer[rect[i].0] = rect[i].1;
 /// }
 /// ```
 /// This would draw a rectangle between points\
-/// ```20, 20``` and ```40, 40``` with the colour blue.
+/// ```20, 20```, ```20, 40```, ```40, 40``` and ```40, 20``` with the colour blue.
 ///
 /// # Returns:
 /// A vector of tuple of ```(usize, u32)```
 /// - **usize**: pos in buffer
 /// - **u32**: colour
-pub fn draw_rect(x1: usize, y1: usize, x2: usize, y2: usize, col: u32) -> Vec<(usize, u32)> {
-    let mut v_out: Vec<(usize, u32)> =
-        vec![(0 as usize, 0); (x1.abs_diff(x2) + 1) * (y1.abs_diff(y2) + 1)];
+pub fn draw_rect(
+    x1: usize,
+    y1: usize,
+    x2: usize,
+    y2: usize,
+    x3: usize,
+    y3: usize,
+    x4: usize,
+    y4: usize,
+    col: u32,
+) -> Vec<(usize, u32)> {
+    let mut tri_1 = draw_triangle(x1, y1, x2, y2, x3, y3, col);
+    let tri_2 = draw_triangle(x1, y1, x3, y3, x4, y4, col);
 
-    for x in 0..(x1.abs_diff(x2) + 1) {
-        for y in 0..(y1.abs_diff(y2) + 1) {
-            v_out[x + y * (x1.abs_diff(x2) + 1)] = draw_pixel(
-                x + min_i32(x1 as i32, x2 as i32) as usize,
-                y + min_i32(y1 as i32, y2 as i32) as usize,
-                col,
-            )
-        }
-    }
-    return v_out;
+    tri_1.extend(tri_2.iter().cloned());
+
+    return tri_1;
 }
 
 /// Draws a line between two points using a colour. This\

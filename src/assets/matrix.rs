@@ -15,7 +15,7 @@ fn matrix_to_vertex(mat: Array1<f32>) -> Vertex {
 }
 
 /// Translate a 2D matix using ```tx```, ```ty``` and ```tz```.
-pub fn translate_mat2d(mat: Vec<Vertex>, tx: f32, ty: f32, tz: f32) -> Vec<Vertex> {
+pub fn translate_mat2d(mat: &Vec<Vertex>, tx: f32, ty: f32, tz: f32) -> Vec<Vertex> {
     let mut mat_out: Vec<Vertex> = vec![];
 
     for i in 0..mat.len() {
@@ -29,7 +29,7 @@ pub fn translate_mat2d(mat: Vec<Vertex>, tx: f32, ty: f32, tz: f32) -> Vec<Verte
 ///
 /// # Warning
 /// This rotates around ```0,0,0```
-fn rotate_mat2d(mat: Vec<Vertex>, yaw: f32, pitch: f32, roll: f32) -> Vec<Vertex> {
+pub fn rotate_mat2d(mat: &Vec<Vertex>, yaw: f32, pitch: f32, roll: f32) -> Vec<Vertex> {
     let mut mat_out: Vec<Vertex> = vec![];
     let rotation_mat = arr2(&[
         [
@@ -58,66 +58,6 @@ fn rotate_mat2d(mat: Vec<Vertex>, yaw: f32, pitch: f32, roll: f32) -> Vec<Vertex
             vertex_to_matrix(mat[i]).dot(&rotation_mat),
         ));
     }
-
-    return mat_out;
-}
-
-/// Returns a vector with the ```x```, ```y``` and ```z``` offset the cube has from ```0,0,0```.
-fn get_center_of_obj(mat: Vec<Vertex>) -> Vec<f32> {
-    let mut x_sum = 0.0;
-    let mut y_sum = 0.0;
-    let mut z_sum = 0.0;
-    let n_pts = mat.len();
-
-    for i in 0..n_pts {
-        x_sum += mat[i].x;
-        y_sum += mat[i].y;
-        z_sum += mat[i].z;
-    }
-
-    return vec![
-        x_sum / n_pts as f32,
-        y_sum / n_pts as f32,
-        z_sum / n_pts as f32,
-    ];
-}
-
-/// Rotate a 3D object.\
-/// ```obj```: A vector of 1D arrays of f32\
-/// ```yaw```, ```pitch```, ```roll```: In radians\
-/// ```x```, ```y```, ```z``` offset: An offset from\
-/// the center of the object, as f32
-pub fn rotate_obj(
-    obj: Vec<Vertex>,
-    yaw: f32,
-    pitch: f32,
-    roll: f32,
-    x_offset: f32,
-    y_offset: f32,
-    z_offset: f32,
-) -> Vec<Vertex> {
-    let mut mat_out: Vec<Vertex> = vec![];
-    // Getting the offset between the cube's center and 0,0,0
-    let cube_offset = get_center_of_obj(obj.clone());
-
-    // Moving cube's center to be 0,0,0
-    let mat_c = translate_mat2d(
-        obj,
-        -cube_offset[0] + x_offset,
-        -cube_offset[1] + y_offset,
-        -cube_offset[2] + z_offset,
-    );
-
-    // Rotating cube
-    mat_out = rotate_mat2d(mat_c, yaw, pitch, roll);
-
-    // Moving the cube's center away from 0,0,0
-    mat_out = translate_mat2d(
-        mat_out,
-        cube_offset[0] - x_offset,
-        cube_offset[1] - y_offset,
-        cube_offset[2] - z_offset,
-    );
 
     return mat_out;
 }
