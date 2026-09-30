@@ -4,10 +4,13 @@ pub mod assets;
 
 use crate::assets::buttons;
 use crate::assets::dd_drawing;
+use crate::assets::dd_drawing::draw_line;
+use crate::assets::dd_drawing::draw_triangle;
 use crate::assets::ddd_general;
 use crate::assets::ddd_general::Rectangle3D;
+use crate::ddd_general::get_obj_edges;
 
-use crate::assets::ddd_general::get_obj_edges;
+use crate::assets::ddd_general::get_obj_triangales;
 use crate::buttons::Action::Exit;
 use crate::ddd_general::rectangle_3d;
 
@@ -37,7 +40,7 @@ fn main() {
     window.set_target_fps(60);
 
     // 3D cube
-    let mut test_cube: Rectangle3D = rectangle_3d(8.0, 4.0, 6.0, vec![2.0, 2.0, 10.0]);
+    let mut test_cube: Rectangle3D = rectangle_3d(8.0, 4.0, 6.0, vec![2.0, 2.0, 8.0]);
 
     // Declaring buttons
     let buttons: Vec<Button> = vec![Button {
@@ -82,56 +85,73 @@ fn main() {
 
         test_cube.obj = ddd_general::rotate_obj(
             &test_cube.obj,
-            3.1415 / 150.0,
-            3.1415 / 150.0,
-            3.1415 / 150.0,
+            3.1415 / 250.0,
+            3.1415 / 250.0,
+            3.1415 / 250.0,
             0.0,
             0.0,
             0.0,
         );
 
-        // Drawing the cube
-        for i in 0..test_cube.obj.vertex_data.len() {
-            // Only project points in front of the camera.
-            if test_cube.obj.vertex_data[i].z > 0.001 {
-                // Drawing verticies of cube
-                let proj_coords = project_to_2d(
-                    test_cube.obj.vertex_data[i].x,
-                    test_cube.obj.vertex_data[i].y,
-                    test_cube.obj.vertex_data[i].z,
-                    focal,
+        {
+            // Drawing faces of cube
+            let triangles = get_obj_triangales(&test_cube.obj);
+
+            for tri in triangles {
+                let proj_pt1 = project_to_2d(tri[0].x, tri[0].y, tri[0].z, focal);
+                let proj_pt2 = project_to_2d(tri[1].x, tri[1].y, tri[1].z, focal);
+                let proj_pt3 = project_to_2d(tri[2].x, tri[2].y, tri[2].z, focal);
+
+                draw_triangle(
+                    &mut buffer,
+                    proj_pt1[0] as usize,
+                    proj_pt1[1] as usize,
+                    proj_pt2[0] as usize,
+                    proj_pt2[1] as usize,
+                    proj_pt3[0] as usize,
+                    proj_pt3[1] as usize,
+                    BLUE,
                 );
-
-                // Bounds check before converting to an index.
-                if (0.0..WIDTH as f32).contains(&proj_coords[0])
-                    && (0.0..HEIGHT as f32).contains(&proj_coords[1])
-                {
-                    let (index, col) = dd_drawing::draw_pixel(
-                        proj_coords[0] as usize,
-                        proj_coords[1] as usize,
-                        RED,
-                    );
-                    buffer[index] = col;
-                }
             }
+        }
 
+        {
             // Drawing edges of the cube
             let obj_edges = get_obj_edges(&test_cube.obj);
             for edge in obj_edges {
                 let proj_pt1 = project_to_2d(edge[0].x, edge[0].y, edge[0].z, focal);
                 let proj_pt2 = project_to_2d(edge[1].x, edge[1].y, edge[1].z, focal);
 
-                let line = dd_drawing::draw_line(
+                draw_line(
+                    &mut buffer,
                     proj_pt1[0] as usize,
                     proj_pt1[1] as usize,
                     proj_pt2[0] as usize,
                     proj_pt2[1] as usize,
                     GREEN,
                 );
-                for i in 0..(line.len()) {
-                    if line[i].0 < buffer.len() {
-                        buffer[line[i].0] = line[i].1;
-                    }
+            }
+        }
+
+        {
+            // Drawing vertices of the cube
+            for i in 0..test_cube.obj.vertex_data.len() {
+                // Only project points in front of the camera.
+                if test_cube.obj.vertex_data[i].z > 0.001 {
+                    // Drawing verticies of cube
+                    let proj_coords = project_to_2d(
+                        test_cube.obj.vertex_data[i].x,
+                        test_cube.obj.vertex_data[i].y,
+                        test_cube.obj.vertex_data[i].z,
+                        focal,
+                    );
+
+                    dd_drawing::draw_pixel(
+                        &mut buffer,
+                        proj_coords[0] as usize,
+                        proj_coords[1] as usize,
+                        RED,
+                    );
                 }
             }
         }
