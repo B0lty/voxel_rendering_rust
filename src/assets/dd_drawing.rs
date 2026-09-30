@@ -1,4 +1,4 @@
-use crate::WIDTH;
+use crate::{HEIGHT, WIDTH};
 
 /// Draws a point using a colour.
 ///
@@ -17,7 +17,9 @@ use crate::WIDTH;
 /// - **usize**: pos in buffer
 /// - **u32**: colour
 pub fn draw_pixel(buffer: &mut [u32], x: usize, y: usize, col: u32) {
-    buffer[x + y * WIDTH] = col;
+    if x + y * WIDTH <= WIDTH * HEIGHT {
+        buffer[x + y * WIDTH] = col;
+    }
 }
 
 /// Draws a rectangle between four points using a colour.
