@@ -16,8 +16,8 @@ use crate::WIDTH;
 /// A tuple of ```(usize, u32)```
 /// - **usize**: pos in buffer
 /// - **u32**: colour
-pub fn draw_pixel(x: usize, y: usize, col: u32) -> (usize, u32) {
-    return (x + y * WIDTH, col);
+pub fn draw_pixel(buffer: &mut [u32], x: usize, y: usize, col: u32) {
+    buffer[x + y * WIDTH] = col;
 }
 
 /// Draws a rectangle between four points using a colour.
@@ -39,6 +39,7 @@ pub fn draw_pixel(x: usize, y: usize, col: u32) -> (usize, u32) {
 /// - **usize**: pos in buffer
 /// - **u32**: colour
 pub fn draw_rect(
+    buffer: &mut [u32],
     x1: usize,
     y1: usize,
     x2: usize,
@@ -48,13 +49,9 @@ pub fn draw_rect(
     x4: usize,
     y4: usize,
     col: u32,
-) -> Vec<(usize, u32)> {
-    let mut tri_1 = draw_triangle(x1, y1, x2, y2, x3, y3, col);
-    let tri_2 = draw_triangle(x1, y1, x3, y3, x4, y4, col);
-
-    tri_1.extend(tri_2.iter().cloned());
-
-    return tri_1;
+) {
+    draw_triangle(buffer, x1, y1, x2, y2, x3, y3, col);
+    draw_triangle(buffer, x1, y1, x3, y3, x4, y4, col);
 }
 
 /// Draws a line between two points using a colour. This\
@@ -76,9 +73,7 @@ pub fn draw_rect(
 /// A vector of tuple of ```(usize, u32)```
 /// - **usize**: pos in buffer
 /// - **u32**: colour
-pub fn draw_line(x1: usize, y1: usize, x2: usize, y2: usize, col: u32) -> Vec<(usize, u32)> {
-    let mut v_out: Vec<(usize, u32)> = Vec::new();
-
+pub fn draw_line(buffer: &mut [u32], x1: usize, y1: usize, x2: usize, y2: usize, col: u32) {
     let (x1, y1, x2, y2) = (x1 as i32, y1 as i32, x2 as i32, y2 as i32);
 
     let dx = (x2 - x1).abs();
@@ -90,7 +85,7 @@ pub fn draw_line(x1: usize, y1: usize, x2: usize, y2: usize, col: u32) -> Vec<(u
     let (mut x, mut y) = (x1, y1);
 
     loop {
-        v_out.push(draw_pixel(x as usize, y as usize, col));
+        draw_pixel(buffer, x as usize, y as usize, col);
 
         if x == x2 && y == y2 {
             break;
@@ -106,8 +101,6 @@ pub fn draw_line(x1: usize, y1: usize, x2: usize, y2: usize, col: u32) -> Vec<(u
             y += sy;
         }
     }
-
-    return v_out;
 }
 
 /// Returns the smaller of two values.
@@ -137,15 +130,37 @@ fn get_xy_from_buffer_pos(buff: usize) -> Vec<usize> {
 
 /// Returns a vector of vectors of ```x, y``` points that form a line between two points. Used for separate\
 /// computation, not direct drawing.
-fn get_line_xy_pts(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<Vec<usize>> {
-    let line = draw_line(x1, y1, x2, y2, 1);
-    let mut line_out: Vec<Vec<usize>> = vec![vec![0, 0]; line.len()];
+pub fn compute_line(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<Vec<usize>> {
+    let mut v_out: Vec<Vec<usize>> = vec![];
+    let (x1, y1, x2, y2) = (x1 as i32, y1 as i32, x2 as i32, y2 as i32);
 
-    for i in 0..line.len() {
-        line_out[i] = get_xy_from_buffer_pos(line[i].0);
+    let dx = (x2 - x1).abs();
+    let dy = -(y2 - y1).abs();
+    let sx = if x1 < x2 { 1 } else { -1 };
+    let sy = if y1 < y2 { 1 } else { -1 };
+    let mut err = dx + dy;
+
+    let (mut x, mut y) = (x1, y1);
+
+    loop {
+        v_out.push(vec![x as usize, y as usize]);
+
+        if x == x2 && y == y2 {
+            break;
+        }
+
+        let e2 = 2 * err;
+        if e2 >= dy {
+            err += dy;
+            x += sx;
+        }
+        if e2 <= dx {
+            err += dx;
+            y += sy;
+        }
     }
 
-    return line_out;
+    return v_out;
 }
 
 /// Draws a triangle between three points using a colour.
@@ -167,6 +182,7 @@ fn get_line_xy_pts(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<Vec<usize>
 /// - **usize**: pos in buffer
 /// - **u32**: colour
 pub fn draw_triangle(
+    buffer: &mut [u32],
     x1: usize,
     y1: usize,
     x2: usize,
@@ -174,16 +190,14 @@ pub fn draw_triangle(
     x3: usize,
     y3: usize,
     col: u32,
-) -> Vec<(usize, u32)> {
-    let mut v_out: Vec<(usize, u32)> = vec![];
-
+) {
     let x_min = min_i32(min_i32(x1 as i32, x2 as i32), x3 as i32);
     let x_max = max_i32(max_i32(x1 as i32, x2 as i32), x3 as i32);
     let x_range = x_min.abs_diff(x_max);
 
-    let line_12 = get_line_xy_pts(x1, y1, x2, y2);
-    let line_23 = get_line_xy_pts(x2, y2, x3, y3);
-    let line_31 = get_line_xy_pts(x3, y3, x1, y1);
+    let line_12 = compute_line(x1, y1, x2, y2);
+    let line_23 = compute_line(x2, y2, x3, y3);
+    let line_31 = compute_line(x3, y3, x1, y1);
 
     let mut outline_pts: Vec<Vec<usize>> = vec![];
 
@@ -192,7 +206,7 @@ pub fn draw_triangle(
     outline_pts.extend(line_31.iter().cloned());
 
     for x in 0..x_range {
-        let ext_pts = find_matching_x_from_2d_arr(outline_pts.clone(), x as usize + x_min as usize);
+        let ext_pts = find_matching_x_from_2d_arr(&outline_pts, x as usize + x_min as usize);
         if ext_pts.len() > 1 {
             let mut y_min: usize = ext_pts[0][1];
             let mut y_max: usize = ext_pts[0][1];
@@ -210,17 +224,16 @@ pub fn draw_triangle(
                 };
             }
 
-            let scan_line = draw_line(
+            draw_line(
+                buffer,
                 ext_pts[y_min_index][0],
                 ext_pts[y_min_index][1],
                 ext_pts[y_max_index][0],
                 ext_pts[y_max_index][1],
                 col,
             );
-            v_out.extend(scan_line.iter().cloned());
         }
     }
-    return v_out;
 }
 
 /// Finds points that have an x-value that matches what is being searched for.
@@ -242,7 +255,7 @@ pub fn draw_triangle(
 /// ```
 ///
 /// This would print out ```[[10, 0], [10, 50]]```.
-fn find_matching_x_from_2d_arr(pts: Vec<Vec<usize>>, x: usize) -> Vec<Vec<usize>> {
+fn find_matching_x_from_2d_arr(pts: &Vec<Vec<usize>>, x: usize) -> Vec<Vec<usize>> {
     let mut v_out: Vec<Vec<usize>> = vec![];
     for i in 0..pts.len() {
         if pts[i][0] == x {
