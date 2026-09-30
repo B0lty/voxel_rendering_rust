@@ -1,8 +1,10 @@
-use crate::assets::general::merge_sort;
 use crate::assets::matrix::rotate_mat2d;
 use crate::assets::matrix::translate_mat2d;
 
-use crate::assets::general::ValueWithBaggage;
+use std::collections::HashSet;
+
+use parry3d::math::Vec3;
+use parry3d::transformation::convex_hull;
 
 #[derive(Clone, Copy)]
 pub struct Vertex {
@@ -183,51 +185,82 @@ fn cartesian_to_polar_3d(x: f32, y: f32, z: f32) -> Vec<f32> {
     return vec![rho, azimuth, altitude];
 }
 
+fn polar_to_cartesian_3d(rho: f32, az: f32, alt: f32) -> Vec<f32> {
+    let x = rho * alt.sin() * az.cos();
+    let y = rho * alt.sin() * az.sin();
+    let z = rho * alt.cos();
+
+    return vec![x, y, z];
+}
+
+/// Creates a convex hull of an Obj3D using quickhull
+fn build_hull(obj: &Obj3D) -> (Vec<Vec3>, Vec<[u32; 3]>) {
+    // Drop the homogeneous w component; hull operates on 3D points.
+    let pts: Vec<Vec3> = obj
+        .vertex_data
+        .iter()
+        .map(|v| Vec3::new(v.x, v.y, v.z))
+        .collect();
+
+    return convex_hull(&pts);
+}
+
+fn vertex_from_vec3(p: &Vec3) -> Vertex {
+    vertex(p[0], p[1], p[2])
+}
+
 /// Returns all the edges of an object
 pub fn get_obj_edges(obj: &Obj3D) -> Vec<Vec<Vertex>> {
-    //                                     x    y    z  weight
-    let mut verticies_weights_polar: Vec<ValueWithBaggage> = vec![];
-    let mut obj_edges: Vec<Vec<Vertex>> = vec![];
-    let obj_center = get_center_of_obj(&obj);
+    let (pts, tris) = build_hull(obj);
 
-    for vertex in obj.vertex_data.clone() {
-        let polar_coord = cartesian_to_polar_3d(
-            vertex.x - obj_center[0],
-            vertex.y - obj_center[1],
-            vertex.z - obj_center[2],
-        );
+    // Key on the unordered vertex-index pair. `(min, max)` canonicalises
+    // so (a,b) and (b,a) map to the same key.
+    let mut seen: HashSet<(u32, u32)> = HashSet::new();
+    let mut obj_edges: Vec<Vec<Vertex>> = Vec::new();
 
-        let weight_and_pos: ValueWithBaggage = ValueWithBaggage {
-            value: polar_coord[1] + polar_coord[2],
-            baggage: vec![vertex.x, vertex.y, vertex.z],
-        };
+    for tri in &tris {
+        for i in 0..3 {
+            let a = tri[i];
+            let b = tri[(i + 1) % 3];
+            let key = if a < b { (a, b) } else { (b, a) };
 
-        verticies_weights_polar.push(weight_and_pos);
+            if !seen.insert(key) {
+                continue; // edge already emitted by a neighbour triangle
+            }
+
+            obj_edges.push(vec![
+                vertex_from_vec3(&pts[a as usize]),
+                vertex_from_vec3(&pts[b as usize]),
+            ]);
+        }
     }
 
-    let sorted = merge_sort(verticies_weights_polar);
+    obj_edges
+}
 
-    for i in 0..(sorted.len() - 1) {
-        obj_edges.push(vec![
+pub fn get_obj_triangales(obj: &Obj3D) -> Vec<Vec<Vertex>> {
+    let mut obj_triangles: Vec<Vec<Vertex>> = vec![];
+    let hull = build_hull(&obj);
+
+    for triangle_index in hull.1 {
+        obj_triangles.push(vec![
             vertex(
-                sorted[i].baggage[0],
-                sorted[i].baggage[1],
-                sorted[i].baggage[2],
+                hull.0[triangle_index[0] as usize][0],
+                hull.0[triangle_index[0] as usize][1],
+                hull.0[triangle_index[0] as usize][2],
             ),
             vertex(
-                sorted[i + 1].baggage[0],
-                sorted[i + 1].baggage[1],
-                sorted[i + 1].baggage[2],
+                hull.0[triangle_index[1] as usize][0],
+                hull.0[triangle_index[1] as usize][1],
+                hull.0[triangle_index[1] as usize][2],
+            ),
+            vertex(
+                hull.0[triangle_index[2] as usize][0],
+                hull.0[triangle_index[2] as usize][1],
+                hull.0[triangle_index[2] as usize][2],
             ),
         ])
     }
-
-    return obj_edges;
-}
-
-fn get_triangales_of_obj(obj: &Obj3D) -> Vec<Vec<Vertex>> {
-    let obj_triangles: Vec<Vec<Vertex>> = vec![];
-    let obj_edges = get_obj_edges(&obj);
 
     return obj_triangles;
 }
