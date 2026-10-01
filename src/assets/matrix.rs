@@ -20,6 +20,7 @@ pub fn translate_mat2d(mat: &Vec<Vertex>, tx: f32, ty: f32, tz: f32) -> Vec<Vert
 
     for i in 0..mat.len() {
         mat_out.push(vertex(mat[i].x + tx, mat[i].y + ty, mat[i].z + tz));
+        mat_out[i].is_pt = mat[i].is_pt;
     }
 
     return mat_out;
@@ -35,7 +36,7 @@ pub fn rotate_mat2d(mat: &Vec<Vertex>, yaw: f32, pitch: f32, roll: f32) -> Vec<V
         [
             yaw.cos() * pitch.cos(),
             yaw.cos() * pitch.sin() * roll.sin() - yaw.sin() * roll.cos(),
-            yaw.cos() * pitch.sin() * roll.sin() + yaw.sin() * roll.cos(),
+            yaw.cos() * pitch.sin() * roll.cos() + yaw.sin() * roll.sin(),
             0.0,
         ],
         [
@@ -54,8 +55,11 @@ pub fn rotate_mat2d(mat: &Vec<Vertex>, yaw: f32, pitch: f32, roll: f32) -> Vec<V
     ]);
 
     for i in 0..mat.len() {
+        // mat_out.push(matrix_to_vertex(
+        //     vertex_to_matrix(mat[i]).dot(&rotation_mat),
+        // ));
         mat_out.push(matrix_to_vertex(
-            vertex_to_matrix(mat[i]).dot(&rotation_mat),
+            rotation_mat.dot(&vertex_to_matrix(mat[i])),
         ));
     }
 
