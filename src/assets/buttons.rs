@@ -7,7 +7,8 @@ use crate::assets::font;
 
 #[derive(Clone)]
 pub enum Action {
-    Exit,
+    ZoomIn,
+    ZoomOut,
     None,
 }
 
@@ -30,8 +31,7 @@ impl Button {
             && mouse_x
                 < self.x_pos + (self.text.len() * font::GLYPH_WIDTH - 1) as f32 + self.border_width
             && mouse_y > self.y_pos - self.border_width
-            && mouse_y
-                < self.y_pos + (self.text.len() * font::GLYPH_WIDTH - 1) as f32 + self.border_width
+            && mouse_y < self.y_pos + font::GLYPH_HEIGHT as f32 + self.border_width
         {
             return true;
         } else {
