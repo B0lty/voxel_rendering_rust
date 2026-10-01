@@ -10,16 +10,6 @@ pub fn merge_sort(input: Vec<ValueWithBaggage>) -> Vec<ValueWithBaggage> {
         return input;
     }
 
-    // let mut l1: Vec<ValueWithBaggage> = vec![];
-    // let mut l2: Vec<ValueWithBaggage> = vec![];
-
-    // for i in 0..n {
-    //     if i <= (n as f32 / 2 as f32).ceil() as usize {
-    //         l1.push(input[i].clone());
-    //     } else {
-    //         l2.push(input[i].clone());
-    //     }
-    // }
     let mid = n / 2;
 
     let mut l1: Vec<ValueWithBaggage> = Vec::with_capacity(mid);

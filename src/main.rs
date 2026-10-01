@@ -3,14 +3,15 @@ use minifb::{Key, MouseButton, Window, WindowOptions};
 pub mod assets;
 
 use crate::assets::buttons;
+use crate::assets::buttons::Button;
+
 use crate::assets::dd_drawing;
 use crate::assets::dd_drawing::draw_line;
 use crate::assets::dd_drawing::draw_triangle;
+
 use crate::assets::ddd_general::Structure;
 use crate::assets::ddd_general::cube;
 use crate::assets::ddd_general::project_to_2d;
-
-use crate::assets::buttons::Button;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -35,7 +36,7 @@ fn main() {
     // Limit to max ~60 fps update rate
     window.set_target_fps(60);
 
-    // Defining 3D objects
+    // Defining 3D objects in the world
     let mut world: Structure = Structure {
         obj_list: vec![
             cube(1.0, [-3.0, -3.0, 5.0]), // start L
@@ -127,14 +128,7 @@ fn main() {
         // Focal length in pixels
         let focal: f32 = 100.0;
 
-        // world.rotate(
-        //     3.1415 / 250.0 * 22.0,
-        //     3.1415 / 250.0 * 22.0,
-        //     3.1415 / 250.0 * 22.0,
-        //     0.0,
-        //     0.0,
-        //     0.0,
-        // );
+        // Rotating the world
         world.rotate(
             3.1415 / 500.0,
             3.1415 / 500.0,
@@ -143,14 +137,17 @@ fn main() {
             0.0,
             0.0,
         );
+
         for obj in &mut world.obj_list {
+            // Applying zoom to the obj
             {
                 for vertex in &mut obj.vertex_data {
                     vertex.z += zoom_level;
                 }
             }
+
+            // Drawing faces of the obj
             {
-                // Drawing faces of cube
                 let triangles = obj.surface();
 
                 for tri in triangles {
@@ -171,8 +168,8 @@ fn main() {
                 }
             }
 
+            // Drawing edges of the obj
             {
-                // Drawing edges of the cube
                 let obj_edges = obj.edges();
                 for edge in obj_edges {
                     let proj_pt1 = project_to_2d(edge[0].x, edge[0].y, edge[0].z, focal);
@@ -189,8 +186,8 @@ fn main() {
                 }
             }
 
+            // Drawing vertices of the obj
             {
-                // Drawing vertices of the cube
                 for i in 0..obj.vertex_data.len() {
                     // Only project points in front of the camera.
                     if obj.vertex_data[i].z > 0.001 {
@@ -214,12 +211,14 @@ fn main() {
         }
         zoom_level = 0.0;
 
-        // rendering buttons
-        let button_buff = buttons::render_buttons(&buttons);
+        // Rendering buttons
+        {
+            let button_buff = buttons::render_buttons(&buttons);
 
-        for i in 0..button_buff.len() {
-            if button_buff[i] != 1 {
-                buffer[i] = button_buff[i];
+            for i in 0..button_buff.len() {
+                if button_buff[i] != 1 {
+                    buffer[i] = button_buff[i];
+                }
             }
         }
 

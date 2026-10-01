@@ -45,7 +45,6 @@ impl Obj3D {
     }
 
     /// Rotate an object.\
-    /// ```obj```: A vector of 1D arrays of f32\
     /// ```yaw```, ```pitch```, ```roll```: In radians\
     /// ```x```, ```y```, ```z``` offset: An offset from\
     /// the center of the object, as f32
@@ -179,8 +178,7 @@ impl Structure {
         ];
     }
 
-    /// Rotate an object.\
-    /// ```obj```: A vector of 1D arrays of f32\
+    /// Rotate a structure.\
     /// ```yaw```, ```pitch```, ```roll```: In radians\
     /// ```x```, ```y```, ```z``` offset: An offset from\
     /// the center of the object, as f32
@@ -391,6 +389,12 @@ fn cartesian_to_polar_3d(x: f32, y: f32, z: f32) -> Vec<f32> {
     return vec![rho, azimuth, altitude];
 }
 
+/// Converts polar co-ordinates to cartesian co-ordinates.\
+///
+/// # Returns:
+/// ```result[0]```: ```x```, f32\
+/// ```result[1]```: ```y```, f32\
+/// ```result[2]```: ```z```, f32
 fn polar_to_cartesian_3d(rho: f32, az: f32, alt: f32) -> Vec<f32> {
     let x = rho * alt.sin() * az.cos();
     let y = rho * alt.sin() * az.sin();
