@@ -21,6 +21,8 @@ pub struct Obj3D {
     pub pitch: f32,
     pub roll: f32,
     pub vertex_data: Vec<Vertex>,
+    pub edge_indices: Vec<[u8; 2]>,
+    pub face_indices: Vec<[u8; 4]>,
 }
 
 impl Obj3D {
@@ -147,7 +149,7 @@ pub struct Rectangle3D {
     pub height: f32,
     pub depth: f32,
     pub obj: Obj3D,
-    pub center_pos: Vec<f32>,
+    pub center_pos: [f32; 3],
 }
 
 pub struct Structure {
@@ -218,12 +220,21 @@ pub fn vertex(x: f32, y: f32, z: f32) -> Vertex {
     };
 }
 
-fn build_obj(vertex_data: Vec<Vertex>, roll: f32, pitch: f32, yaw: f32) -> Obj3D {
+fn build_obj(
+    vertex_data: Vec<Vertex>,
+    edge_indices: Vec<[u8; 2]>,
+    face_indices: Vec<[u8; 4]>,
+    roll: f32,
+    pitch: f32,
+    yaw: f32,
+) -> Obj3D {
     return Obj3D {
         yaw,
         pitch,
         roll,
         vertex_data,
+        edge_indices,
+        face_indices,
     };
 }
 
@@ -269,14 +280,45 @@ pub fn rectangle_3d(width: f32, height: f32, depth: f32, center_pos: [f32; 3]) -
         (depth / 2.0) + center_pos[2],
     );
 
-    let obj = build_obj(vec![v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8], 0.0, 0.0, 0.0);
+    let edge_indices: Vec<[u8; 2]> = vec![
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 0],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7],
+        [4, 5],
+        [5, 6],
+        [6, 7],
+        [7, 4],
+    ];
+
+    let face_indices: Vec<[u8; 4]> = vec![
+        [0, 1, 2, 3],
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [3, 0, 4, 7],
+        [4, 5, 6, 7],
+    ];
+
+    let obj = build_obj(
+        vec![v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8],
+        edge_indices,
+        face_indices,
+        0.0,
+        0.0,
+        0.0,
+    );
 
     return Rectangle3D {
         width,
         height,
         depth,
         obj,
-        center_pos: center_pos.to_vec(),
+        center_pos: center_pos,
     };
 }
 
@@ -322,57 +364,38 @@ pub fn cube(size: f32, center_pos: [f32; 3]) -> Obj3D {
         (size / 2.0) + center_pos[2],
     );
 
-    return build_obj(vec![v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8], 0.0, 0.0, 0.0);
-}
+    let edge_indices: Vec<[u8; 2]> = vec![
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 0],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7],
+        [4, 5],
+        [5, 6],
+        [6, 7],
+        [7, 4],
+    ];
 
-/// Rotate a 3D object.\
-/// ```obj```: A vector of 1D arrays of f32\
-/// ```yaw```, ```pitch```, ```roll```: In radians\
-/// ```x```, ```y```, ```z``` offset: An offset from\
-/// the center of the object, as f32
-pub fn rotate_obj(
-    obj: &Obj3D,
-    yaw: f32,
-    pitch: f32,
-    roll: f32,
-    x_offset: f32,
-    y_offset: f32,
-    z_offset: f32,
-) -> Obj3D {
-    let mut obj_out: Obj3D;
-    // Getting the offset between the cube's center and 0,0,0
-    let cube_offset = obj.center();
+    let face_indices: Vec<[u8; 4]> = vec![
+        [0, 1, 2, 3],
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [3, 0, 4, 7],
+        [4, 5, 6, 7],
+    ];
 
-    // Moving cube's center to be 0,0,0
-    let obj_center = build_obj(
-        translate_mat2d(
-            &obj.vertex_data,
-            -cube_offset[0] + x_offset,
-            -cube_offset[1] + y_offset,
-            -cube_offset[2] + z_offset,
-        ),
+    return build_obj(
+        vec![v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8],
+        edge_indices,
+        face_indices,
         0.0,
         0.0,
         0.0,
     );
-
-    // Rotating cube
-    obj_out = build_obj(
-        rotate_mat2d(&obj_center.vertex_data, yaw, pitch, roll),
-        yaw,
-        pitch,
-        roll,
-    );
-
-    // Moving the cube's center away from 0,0,0
-    obj_out.vertex_data = translate_mat2d(
-        &obj_out.vertex_data,
-        cube_offset[0] - x_offset,
-        cube_offset[1] - y_offset,
-        cube_offset[2] - z_offset,
-    );
-
-    return obj_out;
 }
 
 /// Converts cartesian co-ordinates to polar co-ordinates.\
