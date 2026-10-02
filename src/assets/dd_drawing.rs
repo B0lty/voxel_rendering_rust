@@ -130,8 +130,8 @@ fn get_xy_from_buffer_pos(buff: usize) -> Vec<usize> {
 
 /// Returns a vector of vectors of ```x, y``` points that form a line between two points. Used for separate\
 /// computation, not direct drawing.
-pub fn compute_line(x1: i32, y1: i32, x2: i32, y2: i32) -> Vec<Vec<i32>> {
-    let mut v_out: Vec<Vec<i32>> = vec![];
+pub fn compute_line(x1: i32, y1: i32, x2: i32, y2: i32) -> Vec<[i32; 2]> {
+    let mut v_out: Vec<[i32; 2]> = vec![];
 
     let dx = (x2 - x1).abs();
     let dy = -(y2 - y1).abs();
@@ -142,7 +142,7 @@ pub fn compute_line(x1: i32, y1: i32, x2: i32, y2: i32) -> Vec<Vec<i32>> {
     let (mut x, mut y) = (x1, y1);
 
     loop {
-        v_out.push(vec![x, y]);
+        v_out.push([x, y]);
 
         if x == x2 && y == y2 {
             break;
@@ -190,25 +190,43 @@ pub fn draw_triangle(
     y3: i32,
     col: u32,
 ) {
-    let x_min = min_i32(min_i32(x1, x2), x3);
-    let x_max = max_i32(max_i32(x1, x2), x3);
+    let x1 = x1.max(WIDTH as i32 * -1).min(WIDTH as i32 * 2 - 1);
+    let x2 = x2.max(WIDTH as i32 * -1).min(WIDTH as i32 * 2 - 1);
+    let x3 = x3.max(WIDTH as i32 * -1).min(WIDTH as i32 * 2 - 1);
+
+    let y1 = y1.max(HEIGHT as i32 * -1).min(HEIGHT as i32 * 2 - 1);
+    let y2 = y2.max(HEIGHT as i32 * -1).min(HEIGHT as i32 * 2 - 1);
+    let y3 = y3.max(HEIGHT as i32 * -1).min(HEIGHT as i32 * 2 - 1);
+
+    let x_min = x1.min(x2.min(x3)).max(0);
+    let x_max = x1.max(x2.max(x3)).min(WIDTH as i32 - 1);
+
+    if x_min > x_max {
+        return;
+    }
+
     let x_range = x_min.abs_diff(x_max);
 
     let line_12 = compute_line(x1, y1, x2, y2);
     let line_23 = compute_line(x2, y2, x3, y3);
     let line_31 = compute_line(x3, y3, x1, y1);
 
-    let mut outline_pts: Vec<Vec<i32>> = vec![];
+    let mut outline_pts: Vec<[i32; 2]> = vec![];
 
-    outline_pts.extend(line_12.iter().cloned());
-    outline_pts.extend(line_23.iter().cloned());
-    outline_pts.extend(line_31.iter().cloned());
+    outline_pts.extend(line_12.iter());
+    outline_pts.extend(line_23.iter());
+    outline_pts.extend(line_31.iter());
 
     for x in 0..x_range {
         let ext_pts = find_matching_x_from_2d_arr(&outline_pts, x as i32 + x_min);
         if ext_pts.len() > 1 {
-            let mut y_min = ext_pts[0][1];
-            let mut y_max = ext_pts[0][1];
+            let mut y_min = ext_pts[0][1].max(0);
+            let mut y_max = ext_pts[0][1].min(WIDTH as i32 - 1);
+
+            if y_min > y_max {
+                return;
+            }
+
             let mut y_min_index = 0;
             let mut y_max_index = 0;
 
@@ -224,7 +242,9 @@ pub fn draw_triangle(
             }
 
             for y in ext_pts[y_min_index][1]..ext_pts[y_max_index][1] {
-                draw_pixel(buffer, ext_pts[y_min_index][0], y, col);
+                if y >= 0 || ext_pts[y_min_index][0] >= 0 {
+                    draw_pixel(buffer, ext_pts[y_min_index][0], y, col);
+                }
             }
         }
     }
@@ -249,8 +269,8 @@ pub fn draw_triangle(
 /// ```
 ///
 /// This would print out ```[[10, 0], [10, 50]]```.
-fn find_matching_x_from_2d_arr(pts: &Vec<Vec<i32>>, x: i32) -> Vec<Vec<i32>> {
-    let mut v_out: Vec<Vec<i32>> = vec![];
+fn find_matching_x_from_2d_arr(pts: &Vec<[i32; 2]>, x: i32) -> Vec<[i32; 2]> {
+    let mut v_out: Vec<[i32; 2]> = vec![];
     for i in 0..pts.len() {
         if pts[i][0] == x {
             let current_pt = pts[i].clone();
