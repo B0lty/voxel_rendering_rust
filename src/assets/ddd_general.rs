@@ -22,7 +22,7 @@ pub struct Obj3D {
     pub roll: f32,
     pub vertex_data: Vec<Vertex>,
     pub edge_indices: Vec<[u8; 2]>,
-    pub face_indices: Vec<[u8; 4]>,
+    pub surface_indices: Vec<[u8; 3]>,
 }
 
 impl Obj3D {
@@ -223,7 +223,7 @@ pub fn vertex(x: f32, y: f32, z: f32) -> Vertex {
 fn build_obj(
     vertex_data: Vec<Vertex>,
     edge_indices: Vec<[u8; 2]>,
-    face_indices: Vec<[u8; 4]>,
+    surface_indices: Vec<[u8; 3]>,
     roll: f32,
     pitch: f32,
     yaw: f32,
@@ -234,7 +234,7 @@ fn build_obj(
         roll,
         vertex_data,
         edge_indices,
-        face_indices,
+        surface_indices,
     };
 }
 
@@ -295,19 +295,25 @@ pub fn rectangle_3d(width: f32, height: f32, depth: f32, center_pos: [f32; 3]) -
         [7, 4],
     ];
 
-    let face_indices: Vec<[u8; 4]> = vec![
-        [0, 1, 2, 3],
-        [0, 1, 5, 4],
-        [1, 2, 6, 5],
-        [2, 3, 7, 6],
-        [3, 0, 4, 7],
-        [4, 5, 6, 7],
+    let surface_indices: Vec<[u8; 3]> = vec![
+        [0, 2, 1],
+        [0, 3, 2], // top    (+y)
+        [0, 5, 4],
+        [0, 1, 5], // right  (+x)
+        [1, 6, 5],
+        [1, 2, 6], // back   (-z)
+        [2, 7, 6],
+        [2, 3, 7], // left   (-x)
+        [0, 7, 3],
+        [0, 4, 7], // front  (+z)
+        [4, 6, 7],
+        [4, 5, 6], // bottom (-y)
     ];
 
     let obj = build_obj(
         vec![v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8],
         edge_indices,
-        face_indices,
+        surface_indices,
         0.0,
         0.0,
         0.0,
@@ -379,19 +385,25 @@ pub fn cube(size: f32, center_pos: [f32; 3]) -> Obj3D {
         [7, 4],
     ];
 
-    let face_indices: Vec<[u8; 4]> = vec![
-        [0, 1, 2, 3],
-        [0, 1, 5, 4],
-        [1, 2, 6, 5],
-        [2, 3, 7, 6],
-        [3, 0, 4, 7],
-        [4, 5, 6, 7],
+    let surface_indices: Vec<[u8; 3]> = vec![
+        [0, 2, 1],
+        [0, 3, 2], // top    (+y)
+        [0, 5, 4],
+        [0, 1, 5], // right  (+x)
+        [1, 6, 5],
+        [1, 2, 6], // back   (-z)
+        [2, 7, 6],
+        [2, 3, 7], // left   (-x)
+        [0, 7, 3],
+        [0, 4, 7], // front  (+z)
+        [4, 6, 7],
+        [4, 5, 6], // bottom (-y)
     ];
 
     return build_obj(
         vec![v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8],
         edge_indices,
-        face_indices,
+        surface_indices,
         0.0,
         0.0,
         0.0,

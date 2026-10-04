@@ -1,4 +1,5 @@
 use minifb::{Key, KeyRepeat, MouseButton, Window, WindowOptions};
+use parry3d::math::Vec3;
 
 pub mod assets;
 
@@ -7,11 +8,13 @@ use crate::assets::buttons::Button;
 
 use crate::assets::dd_drawing;
 use crate::assets::dd_drawing::draw_line;
-use crate::assets::dd_drawing::draw_rect;
 
+use crate::assets::dd_drawing::draw_triangle;
 use crate::assets::ddd_general::Structure;
 use crate::assets::ddd_general::cube;
 use crate::assets::ddd_general::project_to_2d;
+use crate::assets::general::ValueWithBaggage;
+use crate::assets::general::merge_sort;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -19,6 +22,7 @@ const HEIGHT: usize = 360;
 const RED: u32 = 0x00ff0000;
 const GREEN: u32 = 0x0000ff00;
 const BLUE: u32 = 0x000000ff;
+const BUTTON_BG_COL: u32 = 0x00222244;
 
 fn main() {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
@@ -72,10 +76,6 @@ fn main() {
         ],
     };
 
-    // let mut world: Structure = Structure {
-    //     obj_list: vec![cube(1.0, [0.0, 0.0, 5.0])],
-    // };
-
     // Declaring buttons
     let mut buttons: Vec<Button> = vec![
         Button {
@@ -83,8 +83,8 @@ fn main() {
             y_pos: 10.0,
             text: String::from("zoom in"),
             border_width: 3.0,
-            text_colour: 0x00888888,
-            bg_colour: 0x00222244,
+            text_colour: RED,
+            bg_colour: BUTTON_BG_COL,
             id: String::from("zoom_in"),
             action: buttons::Action::ZoomIn,
         },
@@ -93,8 +93,8 @@ fn main() {
             y_pos: 30.0,
             text: String::from("zoom out"),
             border_width: 3.0,
-            text_colour: 0x00888888,
-            bg_colour: 0x00222244,
+            text_colour: RED,
+            bg_colour: BUTTON_BG_COL,
             id: String::from("zoom_out"),
             action: buttons::Action::ZoomOut,
         },
@@ -104,7 +104,7 @@ fn main() {
             text: String::from("X: 0"),
             border_width: 3.0,
             text_colour: RED,
-            bg_colour: 0x00222244,
+            bg_colour: BUTTON_BG_COL,
             id: String::from("x_lable"),
             action: buttons::Action::None,
         },
@@ -114,7 +114,7 @@ fn main() {
             text: String::from("Y: 0"),
             border_width: 3.0,
             text_colour: RED,
-            bg_colour: 0x00222244,
+            bg_colour: BUTTON_BG_COL,
             id: String::from("y_lable"),
             action: buttons::Action::None,
         },
@@ -124,7 +124,7 @@ fn main() {
             text: String::from("Z: 0"),
             border_width: 3.0,
             text_colour: RED,
-            bg_colour: 0x00222244,
+            bg_colour: BUTTON_BG_COL,
             id: String::from("z_lable"),
             action: buttons::Action::None,
         },
@@ -141,14 +141,17 @@ fn main() {
             *i = 0; // Resets all pixels to black
         }
 
-        let pressed_keys = window.get_keys_pressed(KeyRepeat::No);
-        for key in pressed_keys {
-            match key {
-                Key::Up => y_move += 1.0,
-                Key::Down => y_move -= 1.0,
-                Key::Right => x_move += 1.0,
-                Key::Left => x_move -= 1.0,
-                _ => (),
+        // Key press logic
+        {
+            let pressed_keys = window.get_keys_pressed(KeyRepeat::No);
+            for key in pressed_keys {
+                match key {
+                    Key::Up => y_move += 1.0,
+                    Key::Down => y_move -= 1.0,
+                    Key::Right => x_move += 1.0,
+                    Key::Left => x_move -= 1.0,
+                    _ => (),
+                }
             }
         }
 
@@ -189,12 +192,31 @@ fn main() {
             0.0,
         );
 
-        // Displaying cube pos
-        buttons[2].text = String::from(format!("X: {}", world.obj_list[0].center()[0].to_string()));
-        buttons[3].text = String::from(format!("Y: {}", world.obj_list[0].center()[1].to_string()));
-        buttons[4].text = String::from(format!("Z: {}", world.obj_list[0].center()[2].to_string()));
+        // Displaying world pos
+        buttons[2].text = String::from(format!("X: {}", world.center()[0].to_string()));
+        buttons[3].text = String::from(format!("Y: {}", world.center()[1].to_string()));
+        buttons[4].text = String::from(format!("Z: {}", world.center()[2].to_string()));
 
-        for obj in &mut world.obj_list {
+        // Sorting objects to ensure they are rendered back to front
+        let mut sorted_objects: Vec<ValueWithBaggage> = vec![];
+        for i in 0..world.obj_list.len() {
+            sorted_objects.push(ValueWithBaggage {
+                value: world.obj_list[i].center()[2],
+                baggage: vec![i as f32],
+            })
+        }
+
+        sorted_objects = merge_sort(sorted_objects);
+
+        let sorted_objs_indices: Vec<u32> = sorted_objects
+            .into_iter()
+            .map(|vwb| vwb.baggage[0] as u32)
+            .collect();
+
+        let world_obj_count = world.obj_list.len();
+        for i in 0..world_obj_count {
+            let obj = &mut world.obj_list[sorted_objs_indices[world_obj_count - 1 - i] as usize];
+
             // Applying zoom and movement to the obj
             {
                 for vertex in &mut obj.vertex_data {
@@ -211,68 +233,61 @@ fn main() {
                 && obj_center[0].abs() < obj_center[2] * x_cull_factor - 1.33333
                 && obj_center[1].abs() < obj_center[2] * y_cull_factor - 0.933333
             {
-                // // Drawing faces of the obj
-                // {
-                //     let triangles = obj.surface();
-
-                //     for tri in triangles {
-                //         let proj_pt1 = project_to_2d(tri[0].x, tri[0].y, tri[0].z, focal);
-                //         let proj_pt2 = project_to_2d(tri[1].x, tri[1].y, tri[1].z, focal);
-                //         let proj_pt3 = project_to_2d(tri[2].x, tri[2].y, tri[2].z, focal);
-
-                //         draw_triangle(
-                //             &mut buffer,
-                //             proj_pt1[0] as i32,
-                //             proj_pt1[1] as i32,
-                //             proj_pt2[0] as i32,
-                //             proj_pt2[1] as i32,
-                //             proj_pt3[0] as i32,
-                //             proj_pt3[1] as i32,
-                //             BLUE,
-                //         );
-                //     }
-                // }
-
                 // Drawing faces of the obj
                 {
-                    for face in &obj.face_indices {
-                        let proj_pt1 = project_to_2d(
-                            obj.vertex_data[face[0] as usize].x,
-                            obj.vertex_data[face[0] as usize].y,
-                            obj.vertex_data[face[0] as usize].z,
-                            focal,
+                    for tri in &obj.surface_indices {
+                        let v0 = Vec3::new(
+                            obj.vertex_data[tri[0] as usize].x,
+                            obj.vertex_data[tri[0] as usize].y,
+                            obj.vertex_data[tri[0] as usize].z,
                         );
-                        let proj_pt2 = project_to_2d(
-                            obj.vertex_data[face[1] as usize].x,
-                            obj.vertex_data[face[1] as usize].y,
-                            obj.vertex_data[face[1] as usize].z,
-                            focal,
+                        let v1 = Vec3::new(
+                            obj.vertex_data[tri[1] as usize].x,
+                            obj.vertex_data[tri[1] as usize].y,
+                            obj.vertex_data[tri[1] as usize].z,
                         );
-                        let proj_pt3 = project_to_2d(
-                            obj.vertex_data[face[2] as usize].x,
-                            obj.vertex_data[face[2] as usize].y,
-                            obj.vertex_data[face[2] as usize].z,
-                            focal,
-                        );
-                        let proj_pt4 = project_to_2d(
-                            obj.vertex_data[face[3] as usize].x,
-                            obj.vertex_data[face[3] as usize].y,
-                            obj.vertex_data[face[3] as usize].z,
-                            focal,
+                        let v2 = Vec3::new(
+                            obj.vertex_data[tri[2] as usize].x,
+                            obj.vertex_data[tri[2] as usize].y,
+                            obj.vertex_data[tri[2] as usize].z,
                         );
 
-                        draw_rect(
-                            &mut buffer,
-                            proj_pt1[0] as i32,
-                            proj_pt1[1] as i32,
-                            proj_pt2[0] as i32,
-                            proj_pt2[1] as i32,
-                            proj_pt3[0] as i32,
-                            proj_pt3[1] as i32,
-                            proj_pt4[0] as i32,
-                            proj_pt4[1] as i32,
-                            BLUE,
-                        );
+                        let pov = Vec3::new(0.0, 0.0, 0.0);
+
+                        let normal = (v2 - v0).cross(v1 - v0);
+
+                        // Checks whether the triangle is visible.
+                        if (v0 - pov).dot(normal) >= 0.0 {
+                            let proj_pt1 = project_to_2d(
+                                obj.vertex_data[tri[0] as usize].x,
+                                obj.vertex_data[tri[0] as usize].y,
+                                obj.vertex_data[tri[0] as usize].z,
+                                focal,
+                            );
+                            let proj_pt2 = project_to_2d(
+                                obj.vertex_data[tri[1] as usize].x,
+                                obj.vertex_data[tri[1] as usize].y,
+                                obj.vertex_data[tri[1] as usize].z,
+                                focal,
+                            );
+                            let proj_pt3 = project_to_2d(
+                                obj.vertex_data[tri[2] as usize].x,
+                                obj.vertex_data[tri[2] as usize].y,
+                                obj.vertex_data[tri[2] as usize].z,
+                                focal,
+                            );
+
+                            draw_triangle(
+                                &mut buffer,
+                                proj_pt1[0] as i32,
+                                proj_pt1[1] as i32,
+                                proj_pt2[0] as i32,
+                                proj_pt2[1] as i32,
+                                proj_pt3[0] as i32,
+                                proj_pt3[1] as i32,
+                                BLUE,
+                            );
+                        }
                     }
                 }
 
