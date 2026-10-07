@@ -1,1 +1,6 @@
-/target
+target/**
+!target/
+target/*
+!target/release/
+target/release/*
+!target/release/voxel_rendering_rust.exe
