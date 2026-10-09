@@ -6,10 +6,10 @@ pub mod assets;
 use crate::assets::buttons;
 use crate::assets::buttons::Button;
 
-use crate::assets::dd_drawing;
 use crate::assets::dd_drawing::draw_line;
-
+use crate::assets::dd_drawing::draw_pixel;
 use crate::assets::dd_drawing::draw_triangle;
+
 use crate::assets::ddd_general::Structure;
 use crate::assets::ddd_general::cube;
 use crate::assets::ddd_general::project_to_2d;
@@ -75,6 +75,10 @@ fn main() {
             cube(1.0, [3.0, 2.0, 5.0]),
         ],
     };
+
+    // let mut world: Structure = Structure {
+    //     obj_list: vec![cube(1.0, [0.0, 0.0, 5.])],
+    // };
 
     // Declaring buttons
     let mut buttons: Vec<Button> = vec![
@@ -233,50 +237,50 @@ fn main() {
                 && obj_center[0].abs() < obj_center[2] * x_cull_factor - 1.33333
                 && obj_center[1].abs() < obj_center[2] * y_cull_factor - 0.933333
             {
-                // Drawing faces of the obj
-                {
-                    for tri in &obj.surface_indices {
-                        let v0 = Vec3::new(
+                for tri in &obj.surface_indices {
+                    let v0 = Vec3::new(
+                        obj.vertex_data[tri[0] as usize].x,
+                        obj.vertex_data[tri[0] as usize].y,
+                        obj.vertex_data[tri[0] as usize].z,
+                    );
+                    let v1 = Vec3::new(
+                        obj.vertex_data[tri[1] as usize].x,
+                        obj.vertex_data[tri[1] as usize].y,
+                        obj.vertex_data[tri[1] as usize].z,
+                    );
+                    let v2 = Vec3::new(
+                        obj.vertex_data[tri[2] as usize].x,
+                        obj.vertex_data[tri[2] as usize].y,
+                        obj.vertex_data[tri[2] as usize].z,
+                    );
+
+                    let pov = Vec3::new(0.0, 0.0, 0.0);
+
+                    let normal = (v2 - v0).cross(v1 - v0);
+
+                    // Checks whether the triangle is visible.
+                    if (v0 - pov).dot(normal) >= 0.0 {
+                        let proj_pt1 = project_to_2d(
                             obj.vertex_data[tri[0] as usize].x,
                             obj.vertex_data[tri[0] as usize].y,
                             obj.vertex_data[tri[0] as usize].z,
+                            focal,
                         );
-                        let v1 = Vec3::new(
+                        let proj_pt2 = project_to_2d(
                             obj.vertex_data[tri[1] as usize].x,
                             obj.vertex_data[tri[1] as usize].y,
                             obj.vertex_data[tri[1] as usize].z,
+                            focal,
                         );
-                        let v2 = Vec3::new(
+                        let proj_pt3 = project_to_2d(
                             obj.vertex_data[tri[2] as usize].x,
                             obj.vertex_data[tri[2] as usize].y,
                             obj.vertex_data[tri[2] as usize].z,
+                            focal,
                         );
 
-                        let pov = Vec3::new(0.0, 0.0, 0.0);
-
-                        let normal = (v2 - v0).cross(v1 - v0);
-
-                        // Checks whether the triangle is visible.
-                        if (v0 - pov).dot(normal) >= 0.0 {
-                            let proj_pt1 = project_to_2d(
-                                obj.vertex_data[tri[0] as usize].x,
-                                obj.vertex_data[tri[0] as usize].y,
-                                obj.vertex_data[tri[0] as usize].z,
-                                focal,
-                            );
-                            let proj_pt2 = project_to_2d(
-                                obj.vertex_data[tri[1] as usize].x,
-                                obj.vertex_data[tri[1] as usize].y,
-                                obj.vertex_data[tri[1] as usize].z,
-                                focal,
-                            );
-                            let proj_pt3 = project_to_2d(
-                                obj.vertex_data[tri[2] as usize].x,
-                                obj.vertex_data[tri[2] as usize].y,
-                                obj.vertex_data[tri[2] as usize].z,
-                                focal,
-                            );
-
+                        // Drawing faces
+                        {
                             draw_triangle(
                                 &mut buffer,
                                 proj_pt1[0] as i32,
@@ -288,56 +292,41 @@ fn main() {
                                 BLUE,
                             );
                         }
-                    }
-                }
 
-                // Drawing edges of the obj
-                {
-                    for edge in &obj.edge_indices {
-                        let proj_pt1 = project_to_2d(
-                            obj.vertex_data[edge[0] as usize].x,
-                            obj.vertex_data[edge[0] as usize].y,
-                            obj.vertex_data[edge[0] as usize].z,
-                            focal,
-                        );
-                        let proj_pt2 = project_to_2d(
-                            obj.vertex_data[edge[1] as usize].x,
-                            obj.vertex_data[edge[1] as usize].y,
-                            obj.vertex_data[edge[1] as usize].z,
-                            focal,
-                        );
-
-                        draw_line(
-                            &mut buffer,
-                            proj_pt1[0] as i32,
-                            proj_pt1[1] as i32,
-                            proj_pt2[0] as i32,
-                            proj_pt2[1] as i32,
-                            GREEN,
-                        );
-                    }
-                }
-
-                // Drawing vertices of the obj
-                {
-                    for i in 0..obj.vertex_data.len() {
-                        // Only project points in front of the camera.
-                        if obj.vertex_data[i].z > 0.001 {
-                            // Drawing verticies of cube
-                            let proj_coords = project_to_2d(
-                                obj.vertex_data[i].x,
-                                obj.vertex_data[i].y,
-                                obj.vertex_data[i].z,
-                                focal,
-                            );
-
-                            dd_drawing::draw_pixel(
+                        // Drawing edges
+                        {
+                            draw_line(
                                 &mut buffer,
-                                proj_coords[0] as i32,
-                                proj_coords[1] as i32,
-                                RED,
+                                proj_pt1[0] as i32,
+                                proj_pt1[1] as i32,
+                                proj_pt2[0] as i32,
+                                proj_pt2[1] as i32,
+                                GREEN,
+                            );
+                            draw_line(
+                                &mut buffer,
+                                proj_pt2[0] as i32,
+                                proj_pt2[1] as i32,
+                                proj_pt3[0] as i32,
+                                proj_pt3[1] as i32,
+                                GREEN,
+                            );
+                            draw_line(
+                                &mut buffer,
+                                proj_pt3[0] as i32,
+                                proj_pt3[1] as i32,
+                                proj_pt1[0] as i32,
+                                proj_pt1[1] as i32,
+                                GREEN,
                             );
                         }
+
+                        // Drawing vertices
+                        // {
+                        //     draw_pixel(&mut buffer, proj_pt1[0] as i32, proj_pt1[1] as i32, RED);
+                        //     draw_pixel(&mut buffer, proj_pt2[0] as i32, proj_pt2[1] as i32, RED);
+                        //     draw_pixel(&mut buffer, proj_pt3[0] as i32, proj_pt3[1] as i32, RED);
+                        // }
                     }
                 }
             }
